@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup as bs
 import unidecode
+import time
+
 
 headers = {'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.1 Safari/605.1.15'}
@@ -12,6 +14,7 @@ def hh_parcer(headers, base_url):
     jobs = []
     urls_q = []
     urls = []
+    employer = []
     urls.append(base_url)
     session = requests.session()
     request = session.get(base_url, headers=headers, timeout=5)
@@ -38,19 +41,17 @@ def hh_parcer(headers, base_url):
             urls_q.append({
                 'url': href
             })
-        print(urls_q)
+        #print(urls_q)
 
     for url_q in urls_q:
         #print(url_q["url"])
         request = session.get(url_q["url"], headers=headers, timeout=5)
         soup = bs(request.content.decode('utf-8', 'ignore'), 'lxml')
-        #divs = soup.find_all('div', attr={'class': 'bloko-column bloko-column_xs-4 bloko-column_s-8 bloko-column_m-8 bloko-column_l-11 bloko-column_container'})
-
-        if soup.find('h1', attrs={'class': 'header', 'data-qa': 'vacancy-title', 'itemprop': 'title'}) is None:
-            title = 'no value'
-        else:
-            title = soup.find('h1', attrs={'class': 'header', 'data-qa': 'vacancy-title', 'itemprop': 'title'}).text
-            title = unidecode.unidecode(title)
+        #if soup.find('h1', attrs={'class': 'header', 'data-qa': 'vacancy-title', 'itemprop': 'title'}) is None:
+         #   title = 'no value'
+        #else:
+        title = soup.find('h1', attrs={'class': 'header', 'data-qa': 'vacancy-title', 'itemprop': 'title'}).text
+         #   title = unidecode.unidecode(title)
 
         if soup.find('p', attrs={'class': 'vacancy-salary'}) is None:
             salary = 'no value'
@@ -70,20 +71,51 @@ def hh_parcer(headers, base_url):
             Emp_mode = soup.find('meta', attrs={'itemprop':'employmentType'}).text
             Emp_mode = unidecode.unidecode(Emp_mode)
 
-        if soup.find('p', attrs={'class': 'vacancy-creation-time'}) is None:
-            Vacancy_publication_DT = 'no value'
+        if soup.find('meta', attrs={'itemprop': 'addressCountry'}) is None:
+            country = 'no value'
         else:
-            Vacancy_publication_DT = soup.find('p', attrs={'class': 'vacancy-creation-time'}).text
-            Vacancy_publication_DT = unidecode.unidecode(Vacancy_publication_DT)
+            country = soup.find('meta', attrs={'itemprop': 'addressCountry'})['content']
 
+        if soup.find('meta', attrs={'itemprop': 'addressRegion'}) is None:
+            if soup.find('span', attrs={'data-qa': 'vacancy-view-raw-address'}) is None:
+                city = soup.find('meta', attrs={'itemprop': 'addressLocality'})['content']
+            else:
+                city=soup.find('span', attrs={'data-qa': 'vacancy-view-raw-address'}).text
+        else:
+            city = soup.find('meta', attrs={'itemprop': 'addressRegion'})['content']
+
+
+        #if soup.find('p', attrs={'class': 'vacancy-creation-time'}) is None:
+         #   Vacancy_publication_DT = 'no value'
+        #else:
+        Vacancy_publication_DT = soup.find('p', attrs={'class': 'vacancy-creation-time'}).text
+         #   Vacancy_publication_DT = unidecode.unidecode(Vacancy_publication_DT)
+
+        employer_wrap = soup.find('div', attrs={'class': 'vacancy-company-wrapper'})
+        employ = employer_wrap.find('a')['href']
+
+        key_skills_wrap = soup.find_all('span', attrs={'class': 'bloko-tag bloko-tag_inline Bloko-TagList-Tag'})
+
+        key_skills = [x['data-tag-id'] for x in key_skills_wrap]
+
+        if soup.find('div', attrs={'class': 'g-user-content', 'data-qa': 'vacancy-description', 'itemprop':'description'}) is None:
+            description=soup.find('div', attrs={'class': 'l-paddings b-vacancy-desc'}).text
+        else:
+            description = soup.find('div', attrs={'class': 'g-user-content', 'data-qa': 'vacancy-description', 'itemprop':'description'}).text
 
         jobs.append({'title': title,
-                     'salary': salary,
-                     'experince': experince,
-                     'Emp_mode': Emp_mode,
+                     #'salary': salary,
+                     #'experince': experince,
+                     #'Emp_mode': Emp_mode,
+                     #'city': city,
+                     'country': country,
                      'Vacancy_publication_DT': Vacancy_publication_DT,
-                     'company_url': company_url
+                    # 'Employer_url': employ,
+                     #'Vacancy_url':url_q["url"],
+                     #'key-skills': key_skills,
+                     #'description': description
                      })
+
     else:
         print('ERROOR@<?!@#@!$?>')
 
@@ -91,9 +123,8 @@ def hh_parcer(headers, base_url):
 
 
 
-
-    #return jobs
-
+start = time.time()
 jobs_p=hh_parcer(headers, base_url)
-
+end = time.time()
 print(jobs_p)
+print(end - start)
